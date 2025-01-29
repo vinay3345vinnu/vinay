@@ -1,0 +1,81 @@
+from datetime import datetime
+
+class Event:
+    def __init__(self, name, start_time, end_time):
+        self.name = name
+        self.start_time = datetime.strptime(start_time, '%H:%M')
+        self.end_time = datetime.strptime(end_time, '%H:%M')
+
+    def __repr__(self):
+        return f"Event(name='{self.name}', start_time={self.start_time.strftime('%H:%M')}, end_time={self.end_time.strftime('%H:%M')})"
+
+
+class Scheduler:
+    def __init__(self):
+        self.events = []
+
+    def add_event(self, event):
+        self.events.append(event)
+
+    def sort_events(self):
+        # Sort events based on start time
+        self.events.sort(key=lambda event: event.start_time)
+
+    def detect_conflicts(self):
+        conflicts = []
+        for i in range(len(self.events) - 1):
+            for j in range(i + 1, len(self.events)):
+                if self.events[i].end_time > self.events[j].start_time:
+                    conflicts.append((self.events[i], self.events[j]))
+        return conflicts
+
+    def suggest_resolutions(self, conflicts):
+        resolutions = []
+        for conflict in conflicts:
+            # Suggest rescheduling the second event in conflict
+            conflicting_event = conflict[1]
+            new_start_time = (conflicting_event.end_time.hour + 1) % 24
+            new_end_time = new_start_time + (conflicting_event.end_time - conflicting_event.start_time).seconds // 3600
+            resolutions.append((conflicting_event.name, f"{new_start_time}:00", f"{new_end_time}:00"))
+        return resolutions
+
+    def show_schedule(self):
+        print("Sorted Schedule:")
+        for i, event in enumerate(self.events, 1):
+            print(f"{i}. \"{event.name}\", Start: \"{event.start_time.strftime('%H:%M')}\", End: \"{event.end_time.strftime('%H:%M')}\"")
+        
+    def show_conflicts(self, conflicts):
+        print("\nConflicting Events:")
+        for i, conflict in enumerate(conflicts, 1):
+            print(f"{i}. \"{conflict[0].name}\" and \"{conflict[1].name}\"")
+        
+    def show_suggested_resolutions(self, resolutions):
+        print("\nSuggested Resolutions:")
+        for i, resolution in enumerate(resolutions, 1):
+            print(f"{i}. Reschedule \"{resolution[0]}\" to Start: \"{resolution[1]}\", End: \"{resolution[2]}\"")
+
+
+# Example usage:
+scheduler = Scheduler()
+
+# Add events
+scheduler.add_event(Event("Meeting A", "09:00", "10:30"))
+scheduler.add_event(Event("Workshop B", "10:00", "11:30"))
+scheduler.add_event(Event("Lunch Break", "12:00", "13:00"))
+scheduler.add_event(Event("Presentation C", "10:30", "12:00"))
+
+# Sort events by start time
+scheduler.sort_events()
+
+# Detect conflicts
+conflicts = scheduler.detect_conflicts()
+
+# Show sorted schedule
+scheduler.show_schedule()
+
+# Show conflicting events
+scheduler.show_conflicts(conflicts)
+
+# Suggest resolutions for conflicts
+resolutions = scheduler.suggest_resolutions(conflicts)
+scheduler.show_suggested_resolutions(resolutions)
