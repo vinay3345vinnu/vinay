@@ -1,0 +1,99 @@
+from hedera import (
+    Client, 
+    PrivateKey, 
+    AccountId, 
+    TopicCreateTransaction, 
+    TopicMessageSubmitTransaction, 
+    TopicMessageQuery, 
+    Hbar
+)
+import time
+from datetime import datetime
+
+# Configure the Hedera Client
+def create_client(testnet=True):
+    if testnet:
+        # Testnet network configuration
+        client = Client.for_testnet()
+    else:
+        # Mainnet network configuration (if you want to use mainnet)
+        client = Client.for_mainnet()
+    
+    # Set your account credentials
+    private_key = PrivateKey.fromString("your-private-key-here")
+    account_id = AccountId.fromString("your-account-id-here")
+    
+    # Set the client operator
+    client.set_operator(account_id, private_key)
+    
+    return client
+
+# Create a Hedera Topic for messaging
+def create_topic(client):
+    print("Creating Topic...")
+    topic_tx = TopicCreateTransaction().execute(client)
+    receipt = topic_tx.get_receipt(client)
+    topic_id = receipt.topic_id
+    print(f"Topic Created: {topic_id}")
+    return topic_id
+
+# Send a message to the topic
+def send_message(client, topic_id, message, sent_messages):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"Sending message: \"{message}\" at {timestamp}")
+    message_tx = TopicMessageSubmitTransaction().set_topic_id(topic_id).set_message(message).execute(client)
+    receipt = message_tx.get_receipt(client)
+    
+    # Store the message sent with the timestamp
+    sent_messages.append((message, timestamp))
+    
+    print(f"Message sent successfully! Status: {receipt.status}")
+
+# Listen to messages from the topic
+def listen_to_messages(client, topic_id, received_messages):
+    print("\nMessages Received:")
+    try:
+        query = TopicMessageQuery().set_topic_id(topic_id).set_start_time(datetime(2024, 12, 27, 10, 0, 0))
+        messages = query.execute(client)
+        for message in messages:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            received_messages.append((message.message, timestamp))
+            print(f"{len(received_messages)}. \"{message.message}\" at {timestamp}")
+    except Exception as e:
+        print(f"Error occurred: {e}")
+
+# Main function to execute the service
+def main():
+    # Set up the client
+    client = create_client(testnet=True)
+
+    # Create a topic for messaging
+    topic_id = create_topic(client)
+
+    # Track sent and received messages
+    sent_messages = []
+    received_messages = []
+
+    # Send a few messages to the topic
+    send_message(client, topic_id, "Hello, Hedera!", sent_messages)
+    time.sleep(1)  # Sleep for a second before sending another message
+    send_message(client, topic_id, "Learning HCS", sent_messages)
+    time.sleep(1)
+    send_message(client, topic_id, "Message 3", sent_messages)
+
+    # Wait for a bit and then listen for received messages
+    time.sleep(2)
+    listen_to_messages(client, topic_id, received_messages)
+
+    # Output sent messages with timestamps
+    print("\nMessages Sent:")
+    for idx, (message, timestamp) in enumerate(sent_messages, 1):
+        print(f"{idx}. \"{message}\" at {timestamp}")
+
+    # Output received messages with timestamps
+    print("\nMessages Received:")
+    for idx, (message, timestamp) in enumerate(received_messages, 1):
+        print(f"{idx}. \"{message}\" at {timestamp}")
+
+if __name__ == "__main__":
+    main()
